@@ -29,7 +29,16 @@ task_manager.o: task_manager.cpp task_manager.h
 
 run:
 	./$(NAME)
-	
+
+refresh:
+	make clean
+	make
+
+redo:
+	make clean
+	make
+	./$(NAME)
+
 .PHONY: clean
 
 clean: 

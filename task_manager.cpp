@@ -1,26 +1,68 @@
 #include "task_manager.h"
 
 /**
+ * Solve the actual mapper task
+ * @param myTask - a structure containing data for the mapper threads
+ * @returns {void} - just solves the task and puts the value in the mapper array of lists
+ */
+static inline void solveTask(struct MapperTask& myTask);
+
+/**
  * Execute the Mapper
  * @param mapperFunctArgs - a structure containing data for the mapper threads
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
-void* executeTaskMapper(void* _mapperFunctArgs)
+void* executeTaskMapper(void* _myTasks)
 {
-    // Get arguments
-    if(_mapperFunctArgs == NULL) {
-        std::cerr << "Arguments not sent correctly to mapper!";
+    // Receive arguments
+    if(!_myTasks) {
+        std::cerr << "Tasks received by mapper thread send an error!\n";
         exit(-1);
     }
 
+    // Thread pull algorithm
+    while(true) {
+
+        bool found = false; // check if we have found a file to work with
+        struct MapperTask myTask;
+
+        // Create task
+        pthread_mutex_lock(&(((struct MapperTaskList*) _myTasks)->mutexTaskList));
+
+        if(((struct MapperTaskList*) _myTasks)->taskPQ->size() != 0) {
+            found = true;
+            myTask.file_name = ((struct MapperTaskList*) _myTasks)->taskPQ->front();
+            myTask.mapper_partial_list_array = &(((struct MapperTaskList*) _myTasks)->mappers->at((((struct MapperTaskList*) _myTasks)->thread_id)));
+            ((struct MapperTaskList*) _myTasks)->taskPQ->pop_front();
+        } else {
+            break; // No more files (tasks)
+        }
+
+        pthread_mutex_unlock(&(((struct MapperTaskList*) _myTasks)->mutexTaskList));
+
+        if(found) {
+            solveTask(myTask);
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * Solve the actual mapper task
+ * @param myTask - a structure containing data for the mapper threads
+ * @returns {void} - just solves the task and puts the value in the mapper array of lists
+ */
+static inline void solveTask(struct MapperTask& myTask)
+{
     // Open file
-    std::ifstream inputFile (((struct MapperFunctArgs*)_mapperFunctArgs)->file_name, std::ios::in);
+    std::ifstream inputFile (myTask.file_name, std::ios::in);
     if(inputFile.is_open() == false) {
         std::cerr << "Task execution failure! Task file couldn't be opened!" << std::endl;
         std::exit(-1);
     }
     #if DEBUG_TASK_MANAGER
-        std::cout << "File opened is: " << ((struct MapperFunctArgs*)_mapperFunctArgs)->file_name << std::endl;
+        std::cout << "File opened is: " << myTask.file_name << std::endl;
     #endif
 
     // Map values
@@ -34,8 +76,8 @@ void* executeTaskMapper(void* _mapperFunctArgs)
             // If we have 1, add it to every list
             if(value_Holder == 1) {
                 // Add to every list
-                for(int i = 0; i < ((struct MapperFunctArgs*)_mapperFunctArgs)->mapper_partial_list_array->size(); ++i) {
-                    ((struct MapperFunctArgs*)_mapperFunctArgs)->mapper_partial_list_array->at(i).push_back(value_Holder);
+                for(int i = 0; i < myTask.mapper_partial_list_array->size(); ++i) {
+                    myTask.mapper_partial_list_array->at(i).push_back(value_Holder);
                 }
             } else {
                 // Check if it's a perfect power and add to lists if so
@@ -48,7 +90,7 @@ void* executeTaskMapper(void* _mapperFunctArgs)
                         if(powerOrder == 1) {  // If the value is 1, it means the same a^1, so we skip
                             continue;
                         } else {
-                            ((struct MapperFunctArgs*)_mapperFunctArgs)->mapper_partial_list_array->at(powerOrder - 2).push_back(value_Holder); // -2 since 2nd power is mapped as 0
+                            myTask.mapper_partial_list_array->at(powerOrder - 2).push_back(value_Holder); // -2 since 2nd power is mapped as 0
                         }
                     }
                 }       
@@ -59,7 +101,7 @@ void* executeTaskMapper(void* _mapperFunctArgs)
     #if DEBUG_TASK_MANAGER
          // Show the results
         int i = 2;
-        for(auto list : mapperFunctArgs->mapper_partial_list_array) {
+        for(auto list : *(myTask.mapper_partial_list_array)) {
             std::cout << "List of power " << i++ << ": ";
             for(auto el : list) {
                 std::cout << el << " ";
@@ -70,10 +112,7 @@ void* executeTaskMapper(void* _mapperFunctArgs)
 
     // Close file
     inputFile.close();
-
-    return NULL;
 }
-
 
 /**
  * Execute the Mapper
