@@ -1,8 +1,9 @@
 #include "io_manager.h"
 #include "task_manager.h"
 
-#define DEBUG_ONLY_1_MAPPER true
+#define DEBUG_ONLY_1_MAPPER false
 #define REDUCERS_ACTIVE true
+#define DEBUG_ALL_THREADS false
 
 int main(int argc, const char** argv)
 {
@@ -69,27 +70,27 @@ int main(int argc, const char** argv)
     int total_threads = number_of_mappers + number_of_reducers;
 
     #if DEBUG_ONLY_1_MAPPER
-        total_threads = 1;
+        total_threads = 3;
     #endif
 
     // Create mutex
     pthread_mutex_t mutexTaskList;
     pthread_mutex_init(&mutexTaskList, NULL);
 
-    // Create tasks
-    struct MapperTaskList myMapperTasks = {
-        .taskPQ = &(taskPQ),
-        .mappers = &(mappers),
-        .mutexTaskList = mutexTaskList,
-        .thread_id = 0,
+    // Create task array
+    struct MapperTaskList myMapperTasks[number_of_mappers];
+    for(int i = 0; i < number_of_mappers; ++i) {
+        myMapperTasks[i].taskPQ = &(taskPQ);
+        myMapperTasks[i].mappers = &(mappers);
+        myMapperTasks[i].mutexTaskList = mutexTaskList;
+        myMapperTasks[i].thread_id = i;
     };
-
+    
     // Create the threads to work on the tasks above
-    for(int i = 0; i < total_threads; ++i) {
+    for(int i = 0; i < total_threads; i++) {
         if (i < number_of_mappers) {
-            myMapperTasks.thread_id = i;
             // Create mapper thread
-            if(pthread_create(&mappers_threads[i], NULL, executeTaskMapper, (void*) &myMapperTasks) != 0) {
+            if(pthread_create(&mappers_threads[i], NULL, executeTaskMapper, (void*) &myMapperTasks[i]) != 0) {
                 std::cerr << "Error creating mapper thread!\n";
                 END_FUNCTION_ERROR
             }
@@ -98,7 +99,7 @@ int main(int argc, const char** argv)
             else { // If all mappers created, create reducer thread
                 // Create reducer arg
                 struct ReducerFunctArgs reducerArgs = {
-                        .file_name = taskPQ.at(i),
+                    .file_name = taskPQ.at(i),
                 };
 
                 if(pthread_create(&reducers_threads[i-number_of_mappers], NULL, executeTaskReduce, (void*) &reducerArgs) != 0) {
@@ -125,6 +126,23 @@ int main(int argc, const char** argv)
             }
         #endif
     }
+
+    #if DEBUG_ALL_THREADS
+        std::cout << std::endl;
+        int mapper_id = 0;
+        for(auto mapper : mappers) {
+            std::cout << "mapper id: "<< mapper_id++ << std::endl;
+            int power = 2;
+            for(auto list : mapper) {
+                std::cout << "List of power " << power++ << ": ";
+                for(auto elem : list) {
+                    std::cout << elem << " ";
+                }
+                std::cout << std::endl;
+            }
+            std::cout << std::endl;
+        }
+    #endif
 
     // Destroy mutex
     pthread_mutex_destroy(&mutexTaskList);

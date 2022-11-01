@@ -14,6 +14,7 @@ static inline void solveTask(struct MapperTask& myTask);
  */
 void* executeTaskMapper(void* _myTasks)
 {
+    std::cout << "Here" << std::endl;
     // Receive arguments
     if(!_myTasks) {
         std::cerr << "Tasks received by mapper thread send an error!\n";
@@ -22,17 +23,20 @@ void* executeTaskMapper(void* _myTasks)
 
     // Thread pull algorithm
     while(true) {
-
         bool found = false; // check if we have found a file to work with
         struct MapperTask myTask;
 
         // Create task
         pthread_mutex_lock(&(((struct MapperTaskList*) _myTasks)->mutexTaskList));
-
-        if(((struct MapperTaskList*) _myTasks)->taskPQ->size() != 0) {
+        if(((struct MapperTaskList*) _myTasks)->taskPQ->size() > 0) {
             found = true;
-            myTask.file_name = ((struct MapperTaskList*) _myTasks)->taskPQ->front();
-            myTask.mapper_partial_list_array = &(((struct MapperTaskList*) _myTasks)->mappers->at((((struct MapperTaskList*) _myTasks)->thread_id)));
+            myTask = {
+                .file_name = ((struct MapperTaskList*) _myTasks)->taskPQ->front(),
+                .mapper_partial_list_array = &(((struct MapperTaskList*) _myTasks)->mappers->at((((struct MapperTaskList*) _myTasks)->thread_id))),
+                .mutexTaskList = (((struct MapperTaskList*) _myTasks)->mutexTaskList),
+                .thread_id = (((struct MapperTaskList*) _myTasks)->thread_id),
+            };
+            std::cout << "size: " << ((struct MapperTaskList*) _myTasks)->taskPQ->size() << std::endl;
             ((struct MapperTaskList*) _myTasks)->taskPQ->pop_front();
         } else {
             break; // No more files (tasks)
@@ -55,6 +59,9 @@ void* executeTaskMapper(void* _myTasks)
  */
 static inline void solveTask(struct MapperTask& myTask)
 {
+    // Lock it because other threads might be using it at runtime
+    pthread_mutex_lock(&myTask.mutexTaskList);
+
     // Open file
     std::ifstream inputFile (myTask.file_name, std::ios::in);
     if(inputFile.is_open() == false) {
@@ -62,8 +69,10 @@ static inline void solveTask(struct MapperTask& myTask)
         std::exit(-1);
     }
     #if DEBUG_TASK_MANAGER
-        std::cout << "File opened is: " << myTask.file_name << std::endl;
+        std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
     #endif
+
+    std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
 
     // Map values
     int value_Holder {0};
@@ -100,6 +109,7 @@ static inline void solveTask(struct MapperTask& myTask)
 
     #if DEBUG_TASK_MANAGER
          // Show the results
+         std::cout << std::endl;
         int i = 2;
         for(auto list : *(myTask.mapper_partial_list_array)) {
             std::cout << "List of power " << i++ << ": ";
@@ -112,6 +122,9 @@ static inline void solveTask(struct MapperTask& myTask)
 
     // Close file
     inputFile.close();
+
+    // Unlock mutex
+   pthread_mutex_unlock(&myTask.mutexTaskList);
 }
 
 /**

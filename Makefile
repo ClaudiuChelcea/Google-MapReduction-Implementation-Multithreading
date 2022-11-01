@@ -5,7 +5,7 @@
 # ********************************************************
 # ******************** COMPILER SETUP ******************** 
 CC = g++
-CFLAGS = #-Wall -Wextra -g -std=c++17
+CFLAGS = -Wall -Wextra -g -std=c++17 -g
 SRC = main.cpp io_manager.cpp task_manager.cpp
 HEADERS = io_manager.h task_manager.h
 OBJECTS = main.o io_manager.o task_manager.o
@@ -15,7 +15,7 @@ NAME = tema1.exe
 # ******************** EXECUTE BUILD *********************
 build: $(NAME)
 
-$(NAME): $(OBJECTS) 
+$(NAME): $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $(NAME)
 
 main.o: main.cpp

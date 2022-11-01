@@ -7,8 +7,10 @@
 #include <list>
 #include <deque>
 #include <math.h>
+#include <stdlib.h>
 
-#define DEBUG_TASK_MANAGER true
+#define DEBUG_TASK_MANAGER false
+#define MAX_NUMBER_OF_THREADS 100
 
 // Task list - the list of tasks that have to be completed by the threads
 struct MapperTaskList
@@ -16,7 +18,7 @@ struct MapperTaskList
     std::deque <std::string>* taskPQ; // the list of 'tasks' - files, in a priority queue
     std::vector<std::vector<std::list<int>>>* mappers; // the mappers list
     pthread_mutex_t mutexTaskList; // the mutex used
-    int thread_id; // the id of the thread
+    int thread_id; // the list of ids
 };
 
 // Used for sending multiple arguments to mapper threads
@@ -24,6 +26,8 @@ struct MapperTask
 {
     std::string file_name; // the name of the file
     std::vector<std::list<int>>* mapper_partial_list_array; // the partial list array
+    pthread_mutex_t mutexTaskList; // the mutex used
+    int thread_id; // the id of the thread
 };
 
 // Used for sending multiple arguments to mapper threads
