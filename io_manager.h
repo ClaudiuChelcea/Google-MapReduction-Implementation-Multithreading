@@ -2,10 +2,11 @@
 #define __IO_MANAGER_H
 
 #include <iostream>
-#include <list>
+#include <deque>
+#include <algorithm>
 #include <fstream>
 
-#define DEBUG_IO_MANAGER true
+#define DEBUG_IO_MANAGER false
 
 #define END_FUNCTION_ERROR return 1;
 #define END_FUNCTION_ERROR_RETURN 1
@@ -24,13 +25,13 @@ bool read_CMDLINE_Params(int& number_of_mappers, int& number_of_reducers, std::s
 
 
 /**
- * Open input file and scan the number of files; Also add the all the files in a list and sort it by file sizes
+ * Open input file and scan the number of files; Also add the all the files in a deque and sort it by file sizes
  * @param nr_Of_Files - gets the number of files that will be used
- * @param list_Of_Files - in this list we will save all the files, sorted by size
+ * @param taskPQ - in this deque we will save all the files, sorted by size
  * @param input_file - from this file we will read the data
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
-bool read_Input_File(int& nr_Of_Files, std::list<std::string>& list_Of_Files, std::string& input_file);
+bool read_Input_File(int& nr_Of_Files, std::deque <std::string>& taskPQ, std::string& input_file);
 
 
 #endif // __IO_MANAGER_H

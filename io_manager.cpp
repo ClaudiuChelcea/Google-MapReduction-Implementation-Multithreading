@@ -16,14 +16,14 @@ bool read_CMDLINE_Params(int& number_of_mappers, int& number_of_reducers, std::s
         number_of_reducers = atoi(argv[2]);
         input_file = argv[3];
     } catch (std::invalid_argument& argument) { // If we don't get the parameters correctly
-        std::cout << "Received wrong argument: " << argument.what() << "\n";
-        std::cout << "Command line arguments not received correctly! Ending program...\n";
+        std::cerr << "Received wrong argument: " << argument.what() << "\n";
+        std::cerr << "Command line arguments not received correctly! Ending program...\n";
         END_FUNCTION_ERROR
     }
 
     // Check parameters received correctly
     if(((number_of_mappers & number_of_reducers) == 0) || input_file.compare("") == 0) {
-        std::cout << "Command line arguments not received correctly! Ending program...\n";
+        std::cerr << "Command line arguments not received correctly! Ending program...\n";
         END_FUNCTION_ERROR
     }
 
@@ -40,6 +40,10 @@ int getFileSize(const std::string& file_name)
     std::streampos fsize = 0;
 
     std::ifstream myfile (file_name, std::ios::in);  // File is of type const char*
+    if(myfile.is_open() == false) {
+        std::cerr << "File to get size from was not opened!" << std::endl;   
+        std::exit(-1);
+    }
 
     fsize = myfile.tellg();         // The file pointer is currently at the beginning
     myfile.seekg(0, std::ios::end);      // Place the file pointer at the end of file
@@ -62,49 +66,56 @@ bool sort_by_file_size (const std::string& first, const std::string& second)
 }
 
 /**
- * Open input file and scan the number of files; Also add the all the files in a list and sort it by file sizes
+ * Open input file and scan the number of files; Also add the all the files in a deque and sort it by file sizes
  * @param nr_Of_Files - gets the number of files that will be used
- * @param list_Of_Files - in this list we will save all the files, sorted by size
+ * @param taskPQ - in this deque we will save all the files, sorted by size
  * @param input_file - from this file we will read the data
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
-bool read_Input_File(int& nr_Of_Files, std::list<std::string>& list_Of_Files, std::string& input_file)
+bool read_Input_File(int& nr_Of_Files, std::deque <std::string>& taskPQ, std::string& input_file)
 {
     // File variables
     std::ifstream inputFile;
     inputFile.open(input_file.c_str());
+    if(inputFile.is_open() == false) {
+        std::cerr << "Input file to read other files from was not opened!" << std::endl;   
+        std::exit(-1);
+    }
 
-    // Get nr of files and create a list of the files
+    // Get nr of files and create a deque of the files
     try {
         inputFile >> nr_Of_Files;
         std::string tmp_File;
         for (int i = 0; i < nr_Of_Files; ++i) {
             inputFile >> tmp_File;
-            list_Of_Files.push_back(tmp_File);
+            taskPQ.push_back(tmp_File);
         }
     } catch (std::invalid_argument& argument) { // If we don't read correctly
-        std::cout << "Received wrong argument: " << argument.what() << "\n";
-        std::cout << "File was not read successfully! Ending program...\n";
+        std::cerr << "Received wrong argument: " << argument.what() << "\n";
+        std::cerr << "File was not read successfully! Ending program...\n";
         END_FUNCTION_ERROR
     }
 
     // Check parameters received correctly
     if(nr_Of_Files == 0) {
-        std::cout << "Input file was not read correctly! Ending program...\n";
+        std::cerr << "Input file was not read correctly! Ending program...\n";
         END_FUNCTION_ERROR
     }
 
     #if DEBUG_IO_MANAGER
     std::cout << "Number of files that should be displayed: " << nr_Of_Files << std::endl; 
-    std::cout << "Number of files that will be displayed: " << list_Of_Files.size() << std::endl;    
-    for(auto item : list_Of_Files)
+    std::cout << "Number of files that will be displayed: " << taskPQ.size() << std::endl;    
+    for(auto item : taskPQ)
         std::cout << "file: " << item << " with size: " << getFileSize(item) << std::endl;
     #endif
 
-    // Sort list descending
-    list_Of_Files.sort(sort_by_file_size);
-    for(auto item : list_Of_Files)
+    // Sort deque descending by size
+    std::sort(taskPQ.begin(), taskPQ.end(), sort_by_file_size);
+    #if DEBUG_IO_MANAGER
+    std::cout << "Debugging files list..." << std::endl;
+    for(auto item : taskPQ)
         std::cout << item << " " << getFileSize(item) << std::endl;
+    #endif
 
     // Close file
     inputFile.close();

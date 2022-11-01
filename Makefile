@@ -6,9 +6,9 @@
 # ******************** COMPILER SETUP ******************** 
 CC = g++
 CFLAGS = #-Wall -Wextra -g -std=c++17
-SRC = main.cpp io_manager.cpp
-HEADERS = io_manager.h
-OBJECTS = main.o io_manager.o
+SRC = main.cpp io_manager.cpp task_manager.cpp
+HEADERS = io_manager.h task_manager.h
+OBJECTS = main.o io_manager.o task_manager.o
 NAME = tema1.exe
 
 # ********************************************************
@@ -24,6 +24,9 @@ main.o: main.cpp
 io_manager.o: io_manager.cpp io_manager.h
 	$(CC) -c $^
 
+task_manager.o: task_manager.cpp task_manager.h
+	$(CC) -c $^
+
 run:
 	./$(NAME)
 	
@@ -32,6 +35,7 @@ run:
 clean: 
 	rm $(NAME)
 	rm $(OBJECTS)
+	rm *.gch
 	
 
 
