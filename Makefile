@@ -45,6 +45,7 @@ clean:
 	rm $(NAME)
 	rm $(OBJECTS)
 	rm *.gch
+	rm out*
 	
 
 

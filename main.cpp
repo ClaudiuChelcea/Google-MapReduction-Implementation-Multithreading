@@ -3,7 +3,7 @@
 
 #define DEBUG_ONLY_1_MAPPER false
 #define REDUCERS_ACTIVE true
-#define DEBUG_ALL_THREADS true
+#define DEBUG_ALL_THREADS false
 
 int main(int argc, const char** argv)
 {
@@ -29,12 +29,12 @@ int main(int argc, const char** argv)
 
     // All mappers
     pthread_t mappers_threads[number_of_mappers];
-    std::vector<std::vector<std::list<int>>> mappers;
+    std::vector<std::vector<std::vector<int>>> mappers;
     for(int i = 0; i < number_of_mappers; ++i) {
         // One mapper
-        std::vector<std::list<int>> mapper_partial_list_array;
-        for (int i = 0; i < number_of_reducers; ++i) { // a mapper partial list has number_of_reducers lists
-            std::list<int> mapper_partial_list;
+        std::vector<std::vector<int>> mapper_partial_list_array;
+        for (int i = 0; i < number_of_reducers; ++i) { // a mapper partial vector has number_of_reducers lists
+            std::vector<int> mapper_partial_list;
             mapper_partial_list_array.push_back(mapper_partial_list);
         }
 
@@ -44,30 +44,36 @@ int main(int argc, const char** argv)
     /* VIEW - the structure will be like this
     mappers
         . mapper_partial_list_array[0]:
-            . list of power 2
-            . list of power 3
+            . vector of power 2
+            . vector of power 3
             . ...
-            . list of power n
+            . vector of power n
         . mapper_partial_list_array[1]
-            . list of power 2
-            . list of power 3
+            . vector of power 2
+            . vector of power 3
             . ...
-            . list of power n
+            . vector of power n
         .
         .
         .
         . mapper_partial_list_array[number_of_mappers - 1]
-            . list of power 2
-            . list of power 3
+            . vector of power 2
+            . vector of power 3
             . ...
-            . list of power n
+            . vector of power n
     */
 
     // All reducers
     pthread_t reducers_threads[number_of_reducers];
+    std::vector<std::vector<int>> reducers;
+    for(int i = 0; i < number_of_reducers; ++i) {
+        // One reducer
+        std::vector<int> reducer_partial_list_array;
+        reducers.push_back(reducer_partial_list_array);
+    }
 
     // Create threads
-    int total_threads = number_of_mappers;// + number_of_reducers;
+    int total_threads = number_of_mappers + number_of_reducers;
 
     #if DEBUG_ONLY_1_MAPPER
         total_threads = 3;
@@ -75,15 +81,34 @@ int main(int argc, const char** argv)
 
     // Create mutex
     pthread_mutex_t mutexTaskList;
-    pthread_mutex_init(&mutexTaskList, NULL);
+    if(pthread_mutex_init(&mutexTaskList, NULL) != 0) {
+        std::cerr << "Couldn't open mutex!\n";
+        END_FUNCTION_ERROR
+    };
 
-    // Create task array
+    // Create barrier
+    pthread_barrier_t barrier;
+    if(pthread_barrier_init(&barrier, NULL, number_of_mappers) != 0) {
+        std::cerr << "Couldn't open barrier!\n";
+        END_FUNCTION_ERROR
+    };
+
+    // Create task array mutex
     struct MapperTaskList myMapperTasks[number_of_mappers];
     for(int i = 0; i < number_of_mappers; ++i) {
         myMapperTasks[i].taskPQ = &(taskPQ);
         myMapperTasks[i].mappers = &(mappers);
         myMapperTasks[i].mutexTaskList = mutexTaskList;
         myMapperTasks[i].thread_id = i;
+    };
+
+    // Create task array barrier
+    struct BarrierTaskList myReducerTasks[number_of_reducers];
+    for(int i = 0; i < number_of_reducers; ++i) {
+        myReducerTasks[i].barrier = barrier;
+        myReducerTasks[i].reducers = &(reducers);
+        myReducerTasks[i].mappers = &(mappers);
+        myReducerTasks[i].thread_id = i;
     };
 
     // Create the threads to work on the tasks above
@@ -97,12 +122,7 @@ int main(int argc, const char** argv)
         }
         #if REDUCERS_ACTIVE
             else { // If all mappers created, create reducer thread
-                // Create reducer arg
-                struct ReducerFunctArgs reducerArgs = {
-                    .file_name = taskPQ.at(i),
-                };
-
-                if(pthread_create(&reducers_threads[i-number_of_mappers], NULL, executeTaskReduce, (void*) &reducerArgs) != 0) {
+                if(pthread_create(&reducers_threads[i-number_of_mappers], NULL, executeTaskReduce, (void*) &myReducerTasks[i]) != 0) {
                     std::cerr << "Error creating reducer thread!\n";
                     END_FUNCTION_ERROR
                 }
@@ -128,18 +148,27 @@ int main(int argc, const char** argv)
     }
 
     // Destroy mutex
-    pthread_mutex_destroy(&mutexTaskList);
+    if (pthread_mutex_destroy(&mutexTaskList) != 0) {
+        std::cerr << "Couldn;t close mutex correctly!";
+        END_FUNCTION_ERROR
+    };
 
-    _sleep(1000);
+    // Destroy barrier
+    if (pthread_barrier_destroy(&barrier) != 0) {
+        std::cerr << "Couldn;t close barrier correctly!";
+        END_FUNCTION_ERROR
+    };
+
     #if DEBUG_ALL_THREADS
+        _sleep(1000);
         std::cout << std::endl;
         int mapper_id = 0;
         for(auto mapper : mappers) {
             std::cout << "mapper id: "<< mapper_id++ << std::endl;
             int power = 2;
-            for(auto list : mapper) {
+            for(auto vector : mapper) {
                 std::cout << "List of power " << power++ << ": ";
-                for(auto elem : list) {
+                for(auto elem : vector) {
                     std::cout << elem << " ";
                 }
                 std::cout << std::endl;

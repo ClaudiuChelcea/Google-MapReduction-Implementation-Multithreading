@@ -86,9 +86,9 @@ static inline void solveTask(struct MapperTask& myTask)
         #endif
 
         if(value_Holder > 0) {
-            // If we have 1, add it to every list
+            // If we have 1, add it to every vector
             if(value_Holder == 1) {
-                // Add to every list
+                // Add to every vector
                 for(int i = 0; i < myTask.mapper_partial_list_array->size(); ++i) {
                     myTask.mapper_partial_list_array->at(i).push_back(value_Holder);
                 }
@@ -115,9 +115,9 @@ static inline void solveTask(struct MapperTask& myTask)
          // Show the results
          std::cout << std::endl;
         int i = 2;
-        for(auto list : *(myTask.mapper_partial_list_array)) {
+        for(auto vector : *(myTask.mapper_partial_list_array)) {
             std::cout << "List of power " << i++ << ": ";
-            for(auto el : list) {
+            for(auto el : vector) {
                 std::cout << el << " ";
             }
             std::cout << std::endl;
@@ -132,25 +132,94 @@ static inline void solveTask(struct MapperTask& myTask)
 }
 
 /**
- * Execute the Mapper
- * @param reducerFunctArgs - a structure containing data for the mapper threads
+ * Solve the actual reducer task
+ * @param myTask - a structure containing data for the reducer threads
+ * @returns {void} - just solves the task and puts the value in the reducer array of lists
+ */
+static inline void solveReduce(struct BarrierTask& myTask);
+
+/**
+ * Execute the reducer
+ * @param _myTasks - a structure containing data for the reducer threads
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
-void* executeTaskReduce(void* _reducerFunctArgs)
+void* executeTaskReduce(void* _myTasks)
 {
     // Get arguments
-    if(_reducerFunctArgs == NULL) {
+    if(_myTasks == NULL) {
         std::cerr << "Arguments not sent correctly to reducer!";
         exit(-1);
     }
-    struct ReducerFunctArgs reducerFunctArgs;
-    try {
-        reducerFunctArgs = *((struct ReducerFunctArgs*) _reducerFunctArgs);
-    } catch (std::invalid_argument e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << "Couldn't get reducer arguments";
-        exit(-1);
-    }
+
+    // Wait all mappers to finish
+    pthread_barrier_wait(&((BarrierTaskList*) _myTasks)->barrier);
+
+    // Create task
+    struct BarrierTask myTask = {
+        .reducer_list = &((BarrierTaskList*) _myTasks)->reducers->at(((BarrierTaskList*) _myTasks)->thread_id),
+        .mappers = ((BarrierTaskList*) _myTasks)->mappers,
+        .thread_id = ((BarrierTaskList*) _myTasks)->thread_id,
+    };
+
+
+    std::cout << "Will solve " << myTask.thread_id << std::endl;
+
+    // Solve task in parallel
+    solveReduce(myTask);
 
     return NULL;
+}
+
+/**
+ * Solve the actual reducer task
+ * @param myTask - a structure containing data for the reducer threads
+ * @returns {void} - just solves the task and puts the value in the reducer array of lists
+ */
+static inline void solveReduce(struct BarrierTask& myTask)
+{
+    std::cout << "Will create reducer " << myTask.thread_id << std::endl;
+
+    try
+    {
+        // Get reductor
+        for(int i = 0; i < myTask.mappers->size(); ++i) { // for every mapper vector
+            std::cout << "HereI " << i << std::endl;
+            std::cout << "task id : " << myTask.thread_id << std::endl;
+            int items_to_check = 0;
+            std::cout << "first item: " << myTask.mappers->at(i).at(0).at(0) << std::endl;
+            try 
+            {
+               items_to_check = myTask.mappers->at(i).at(myTask.thread_id).size();
+            } catch(std::exception e) {
+                std::cerr << e.what();
+                exit(-1);
+            }
+            std::cout << "items_to_check: " << items_to_check << std::endl;
+            for(int j = 0; j < items_to_check; ++j) { // all the items of the power equal to our reductor power order
+                std::cout << "HereJ " << j << std::endl;
+                myTask.reducer_list->push_back(myTask.mappers->at(i).at(myTask.thread_id).at(j));
+            } 
+        }
+
+        // Get number of unique items in list
+        std::sort(myTask.reducer_list->begin(), myTask.reducer_list->end());
+        int uniqueCount = std::unique(myTask.reducer_list->begin(), myTask.reducer_list->end()) - myTask.reducer_list->begin();
+
+        // Create the file and send the answer
+        std::string filename = "out" + myTask.thread_id;
+        std::ofstream f(filename, std::fstream::in | std::fstream::out | std::fstream::app);
+        if(!f.is_open()) {
+            std::cerr << "Reducer file couldn't be opened!";
+            exit(-1);
+        }
+
+        // Display answer
+        f << uniqueCount;
+
+        // Close file
+        f.close();
+    } catch (std::exception e) {
+        std::cerr << e.what();
+        exit(-1);
+    }
 }
