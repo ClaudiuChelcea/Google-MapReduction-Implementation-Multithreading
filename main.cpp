@@ -1,7 +1,7 @@
 #include "io_manager.h"
 #include "task_manager.h"
 
-#define DEBUG_MAIN false
+#define DEBUG_MAIN true
 
 int main(int argc, const char** argv)
 {
@@ -61,7 +61,14 @@ int main(int argc, const char** argv)
         */
 
         // Test with only the first file
-        executeTask(taskPQ.front(), mappers.front());
+        struct MapperFunctArgs testArgs = {
+            .file_name = taskPQ.front(),
+            .mapper_partial_list_array = mappers.front()
+        };
+        executeTask(testArgs);
+
+        // Retrieve value
+        mappers.front() = testArgs.mapper_partial_list_array;
 
         // Show the results
         int i = 2;
@@ -73,6 +80,13 @@ int main(int argc, const char** argv)
             std::cout << std::endl;
         }
     #endif
+
+    //  for(int i = 0; i < number_of_mappers + number_of_reducers; ++i) {
+    //     if (i < number_of_mappers) {
+    //         pthread_create(&mappers_threads[i], NULL, executeTask, NULL);
+    //     }
+    // }
+
 
     END_FUNCTION_SUCCESS
 }

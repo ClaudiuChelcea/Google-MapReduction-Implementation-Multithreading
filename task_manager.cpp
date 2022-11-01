@@ -2,19 +2,19 @@
 
 /**
  * Execute the Mapper
- * @param file_name - gets the file from which we will read the data
+ * @param mapperFunctArgs - a structure containing data for the mapper threads
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
-void executeTask(const std::string& file_name, std::vector<std::list<int>>& mapper_partial_list_array)
-{
+void executeTask(struct MapperFunctArgs& mapperFunctArgs) {
+
     // Open file
-    std::ifstream inputFile (file_name, std::ios::in);
+    std::ifstream inputFile (mapperFunctArgs.file_name, std::ios::in);
     if(inputFile.is_open() == false) {
         std::cerr << "Task execution failure! Task file couldn't be opened!" << std::endl;
         std::exit(-1);
     }
     #if DEBUG_TASK_MANAGER
-        std::cout << "File opened is: " << file_name << std::endl;
+        std::cout << "File opened is: " << mapperFunctArgs.file_name << std::endl;
     #endif
 
     // Map values
@@ -28,8 +28,8 @@ void executeTask(const std::string& file_name, std::vector<std::list<int>>& mapp
             // If we have 1, add it to every list
             if(value_Holder == 1) {
                 // Add to every list
-                for(int i = 0; i < mapper_partial_list_array.size(); ++i) {
-                    mapper_partial_list_array.at(i).push_back(value_Holder);
+                for(int i = 0; i < mapperFunctArgs.mapper_partial_list_array.size(); ++i) {
+                    mapperFunctArgs.mapper_partial_list_array.at(i).push_back(value_Holder);
                 }
             } else {
                 // Check if it's a perfect power and add to lists if so
@@ -42,7 +42,7 @@ void executeTask(const std::string& file_name, std::vector<std::list<int>>& mapp
                         if(powerOrder == 1) {  // If the value is 1, it means the same a^1, so we skip
                             continue;
                         } else {
-                            mapper_partial_list_array.at(powerOrder - 2).push_back(value_Holder); // -2 since 2nd power is mapped as 0
+                            mapperFunctArgs.mapper_partial_list_array.at(powerOrder - 2).push_back(value_Holder); // -2 since 2nd power is mapped as 0
                         }
                     }
                 }       
