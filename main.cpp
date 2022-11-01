@@ -3,7 +3,7 @@
 
 #define DEBUG_ONLY_1_MAPPER false
 #define REDUCERS_ACTIVE true
-#define DEBUG_ALL_THREADS false
+#define DEBUG_ALL_THREADS true
 
 int main(int argc, const char** argv)
 {
@@ -67,7 +67,7 @@ int main(int argc, const char** argv)
     pthread_t reducers_threads[number_of_reducers];
 
     // Create threads
-    int total_threads = number_of_mappers + number_of_reducers;
+    int total_threads = number_of_mappers;// + number_of_reducers;
 
     #if DEBUG_ONLY_1_MAPPER
         total_threads = 3;
@@ -85,7 +85,7 @@ int main(int argc, const char** argv)
         myMapperTasks[i].mutexTaskList = mutexTaskList;
         myMapperTasks[i].thread_id = i;
     };
-    
+
     // Create the threads to work on the tasks above
     for(int i = 0; i < total_threads; i++) {
         if (i < number_of_mappers) {
@@ -127,6 +127,10 @@ int main(int argc, const char** argv)
         #endif
     }
 
+    // Destroy mutex
+    pthread_mutex_destroy(&mutexTaskList);
+
+    _sleep(1000);
     #if DEBUG_ALL_THREADS
         std::cout << std::endl;
         int mapper_id = 0;
@@ -143,9 +147,6 @@ int main(int argc, const char** argv)
             std::cout << std::endl;
         }
     #endif
-
-    // Destroy mutex
-    pthread_mutex_destroy(&mutexTaskList);
 
     END_FUNCTION_SUCCESS
 }

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #define DEBUG_TASK_MANAGER false
+#define DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME true
 #define MAX_NUMBER_OF_THREADS 100
 
 // Task list - the list of tasks that have to be completed by the threads

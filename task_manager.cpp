@@ -14,7 +14,6 @@ static inline void solveTask(struct MapperTask& myTask);
  */
 void* executeTaskMapper(void* _myTasks)
 {
-    std::cout << "Here" << std::endl;
     // Receive arguments
     if(!_myTasks) {
         std::cerr << "Tasks received by mapper thread send an error!\n";
@@ -36,7 +35,6 @@ void* executeTaskMapper(void* _myTasks)
                 .mutexTaskList = (((struct MapperTaskList*) _myTasks)->mutexTaskList),
                 .thread_id = (((struct MapperTaskList*) _myTasks)->thread_id),
             };
-            std::cout << "size: " << ((struct MapperTaskList*) _myTasks)->taskPQ->size() << std::endl;
             ((struct MapperTaskList*) _myTasks)->taskPQ->pop_front();
         } else {
             break; // No more files (tasks)
@@ -59,6 +57,10 @@ void* executeTaskMapper(void* _myTasks)
  */
 static inline void solveTask(struct MapperTask& myTask)
 {
+    #if DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME
+    _sleep(5);
+    #endif
+
     // Lock it because other threads might be using it at runtime
     pthread_mutex_lock(&myTask.mutexTaskList);
 
@@ -72,7 +74,9 @@ static inline void solveTask(struct MapperTask& myTask)
         std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
     #endif
 
-    std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
+    #if DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME
+        std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
+    #endif
 
     // Map values
     int value_Holder {0};
