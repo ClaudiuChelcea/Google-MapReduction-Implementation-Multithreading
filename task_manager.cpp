@@ -58,6 +58,7 @@ void* executeTaskMapper(void* _myTasks)
  */
 static inline void solveTask(struct MapperTask& myTask)
 {
+    std::cout << "Solving task with thread " << myTask.thread_id << std::endl;
     #if DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME
     _sleep(5);
     #endif
@@ -80,12 +81,18 @@ static inline void solveTask(struct MapperTask& myTask)
     #endif
 
     // Map values
+    bool skip_first_item = true;
     int value_Holder {0};
     while(inputFile >> value_Holder) {
+        if(skip_first_item == true) {
+            skip_first_item = false;
+            continue;
+        }
         #if DEBUG_TASK_MANAGER
         std::cout << value_Holder << std::endl;
         #endif
 
+        std::cout << "Solving value with thread " << myTask.thread_id << " value: " << value_Holder << " in file: " << myTask.file_name << std::endl;
         if(value_Holder > 0) {
             // If we have 1, add it to every vector
             if(value_Holder == 1) {
@@ -159,7 +166,6 @@ void* executeTaskReduce(void* _myTasks)
     myTask.thread_id = ((BarrierTaskList*)_myTasks)->thread_id;
 
     // Solve task
-    std::cout << "solved by " << myTask.thread_id << std::endl;
     solveReduce(myTask);
 
     return NULL;
@@ -193,7 +199,6 @@ static inline void solveReduce(struct BarrierTask& myTask)
         // Get number of unique items in list
         std::sort(myTask.reducer_list->begin(), myTask.reducer_list->end());
         for(int i = 0; i < myTask.reducer_list->size(); ++i) {
-            std::cout << "Thread: " << myTask.thread_id << " with item " << myTask.reducer_list->at(i) << std::endl;
         }
         int uniqueCount = std::unique(myTask.reducer_list->begin(), myTask.reducer_list->end()) - myTask.reducer_list->begin();
 

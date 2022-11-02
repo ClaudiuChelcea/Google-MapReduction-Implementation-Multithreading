@@ -22,8 +22,11 @@ bool read_CMDLINE_Params(int& number_of_mappers, int& number_of_reducers, std::s
     }
 
     // Check parameters received correctly
-    if(((number_of_mappers & number_of_reducers) == 0) || input_file.compare("") == 0) {
+    if(number_of_mappers == 0 || number_of_reducers == 0 || input_file.compare("") == 0) {
         std::cerr << "Command line arguments not received correctly! Ending program...\n";
+        std::cout << "number_of_mappers: " << number_of_mappers << std::endl;
+        std::cout << "number_of_reducers: " << number_of_reducers << std::endl;;
+        std::cout << "input_file: " << input_file << std::endl;;
         END_FUNCTION_ERROR
     }
 
