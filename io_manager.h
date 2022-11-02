@@ -6,8 +6,6 @@
 #include <algorithm>
 #include <fstream>
 
-#define DEBUG_IO_MANAGER false
-
 #define END_FUNCTION_ERROR return 1;
 #define END_FUNCTION_ERROR_RETURN 1
 #define END_FUNCTION_SUCCESS return 0;

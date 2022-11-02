@@ -12,10 +12,6 @@
 #define HAVE_STRUCT_TIMESPEC
 #include <pthread.h>
 
-#define DEBUG_TASK_MANAGER false
-#define DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME false
-#define MAX_NUMBER_OF_THREADS 100
-
 // Task vector - the vector of tasks that have to be completed by the threads
 struct MapperTaskList
 {
@@ -23,6 +19,7 @@ struct MapperTaskList
     std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
     pthread_mutex_t mutexTaskList; // the mutex used
     pthread_barrier_t barrier; // the barrier
+    int number_of_reducers; // the number of reducers
     int thread_id; // the vector of ids
 };
 
@@ -32,6 +29,7 @@ struct MapperTask
     std::string file_name; // the name of the file
     std::vector<std::vector<int>>* mapper_partial_list_array; // the partial vector array
     pthread_mutex_t mutexTaskList; // the mutex used
+    int number_of_reducers; // the number of reducers
     int thread_id; // the id of the thread
 };
 

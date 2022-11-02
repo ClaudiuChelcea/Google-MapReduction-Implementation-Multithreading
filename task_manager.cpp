@@ -32,6 +32,7 @@ void* executeTaskMapper(void* _myTasks)
             myTask.file_name = ((struct MapperTaskList*)_myTasks)->taskPQ->front();
             myTask.mapper_partial_list_array = &(((struct MapperTaskList*)_myTasks)->mappers->at((((struct MapperTaskList*)_myTasks)->thread_id)));
             myTask.mutexTaskList = (((struct MapperTaskList*)_myTasks)->mutexTaskList);
+            myTask.number_of_reducers = (((struct MapperTaskList*)_myTasks)->number_of_reducers);
             myTask.thread_id = (((struct MapperTaskList*)_myTasks)->thread_id);
             ((struct MapperTaskList*) _myTasks)->taskPQ->pop_front();
         } else {
@@ -52,19 +53,78 @@ void* executeTaskMapper(void* _myTasks)
 }
 
 /**
+ * Check if number is perfect power and, if true, adds it to the lists
+ * @param n - the number to check if it's a perfect power
+ * @param myTask - receives the task so we can save the values in the reductors arrays
+ * @returns {void} - nothing
+ */
+void perfect_power(int n, struct MapperTask& myTask)
+{
+    // If n == 1, add to all lists
+    if (n == 1) {
+        for(int i = 0; i < myTask.number_of_reducers; ++i) {
+            myTask.mapper_partial_list_array->at(i).push_back(1);
+        }
+        return;
+    }
+
+    // If not, binary search to see if it's a perfect number
+    int exponent = 2;
+    while(true) {
+        if (pow(2, exponent) > n) {
+            return;
+        }
+
+        int low = 2;
+        int hi = low;
+        while (pow(hi, exponent) <= n) {
+            hi *= 2;
+        }
+
+        while((hi-low) > 1) {
+            int middle = floor((low + hi) / 2);
+            if(pow(middle, exponent) <= n) {
+                low = middle;
+            } else {
+                hi = middle;
+            }
+        }
+
+        // If it is a perfect number finally
+        if(pow(low, exponent) == n) { // Put it in our lists
+            // Max low with min exponent
+            if(exponent <= myTask.number_of_reducers + 1)
+                myTask.mapper_partial_list_array->at(exponent - 2).push_back(low); // -2 since 2nd power is mapped as 0
+            
+            // Also get all other lows and exponent combos
+            float sqrt_low;;
+            while((sqrt_low = sqrt(low)) == (int) sqrt_low && (exponent = exponent *2) <= (myTask.number_of_reducers + 1)) {
+                myTask.mapper_partial_list_array->at(exponent - 2).push_back(low);
+            }
+            return;
+        }
+
+        // If not, search for the next exponent
+        ++ exponent;
+    }
+}
+
+static int q = 0;
+
+
+/**
  * Solve the actual mapper task
  * @param myTask - a structure containing data for the mapper threads
  * @returns {void} - just solves the task and puts the value in the mapper array of lists
  */
 static inline void solveTask(struct MapperTask& myTask)
 {
-    std::cout << "Solving task with thread " << myTask.thread_id << std::endl;
     #if DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME
     _sleep(5);
     #endif
 
     // Lock it because other threads might be using it at runtime
-    pthread_mutex_lock(&myTask.mutexTaskList);
+    // pthread_mutex_lock(&myTask.mutexTaskList);
 
     // Open file
     std::ifstream inputFile (myTask.file_name, std::ios::in);
@@ -72,71 +132,21 @@ static inline void solveTask(struct MapperTask& myTask)
         std::cerr << "Task execution failure! Task file couldn't be opened!" << std::endl;
         std::exit(-1);
     }
-    #if DEBUG_TASK_MANAGER
-        std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
-    #endif
-
-    #if DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME
-        std::cout << "File opened is: " << myTask.file_name << " opened by THREAD: " << myTask.thread_id << std::endl;
-    #endif
 
     // Map values
-    bool skip_first_item = true;
     int value_Holder {0};
+    inputFile >> value_Holder;
     while(inputFile >> value_Holder) {
-        if(skip_first_item == true) {
-            skip_first_item = false;
-            continue;
-        }
-        #if DEBUG_TASK_MANAGER
-        std::cout << value_Holder << std::endl;
-        #endif
-
-        std::cout << "Solving value with thread " << myTask.thread_id << " value: " << value_Holder << " in file: " << myTask.file_name << std::endl;
-        if(value_Holder > 0) {
-            // If we have 1, add it to every vector
-            if(value_Holder == 1) {
-                // Add to every vector
-                for(int i = 0; i < myTask.mapper_partial_list_array->size(); ++i) {
-                    myTask.mapper_partial_list_array->at(i).push_back(value_Holder);
-                }
-            } else {
-                // Check if it's a perfect power and add to lists if so
-                for(int i = 2; i <= sqrt(value_Holder); ++i) { // the maximum we wi;; ever find a value is the root of value_Holder
-                    // If value_Holder is power of I, we'll get an integer number, so a true boolean
-                    bool isPerfectPower = (log10(value_Holder) / log10(i)) == ((int) (log10(value_Holder) / log10(i)));
-                    if(isPerfectPower) {
-                        // Get power
-                        int powerOrder = ((int) (log10(value_Holder) / log10(i)));
-                        if(powerOrder == 1) {  // If the value is 1, it means the same a^1, so we skip
-                            continue;
-                        } else {
-                            myTask.mapper_partial_list_array->at(powerOrder - 2).push_back(value_Holder); // -2 since 2nd power is mapped as 0
-                        }
-                    }
-                }       
-            }
-        }
+        //   q++;
+        //  std::cout << "Value nr: " << q << " solving value " << value_Holder << " with thread " << myTask.thread_id << " in file: " << myTask.file_name << std::endl;
+        perfect_power(value_Holder, myTask);
     }
-
-    #if DEBUG_TASK_MANAGER
-         // Show the results
-         std::cout << std::endl;
-        int i = 2;
-        for(auto vector : *(myTask.mapper_partial_list_array)) {
-            std::cout << "List of power " << i++ << ": ";
-            for(auto el : vector) {
-                std::cout << el << " ";
-            }
-            std::cout << std::endl;
-        }
-    #endif
 
     // Close file
     inputFile.close();
 
     // Unlock mutex
-    pthread_mutex_unlock(&myTask.mutexTaskList);
+    // pthread_mutex_unlock(&myTask.mutexTaskList);
 }
 
 /**

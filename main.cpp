@@ -1,9 +1,6 @@
 #include "io_manager.h"
 #include "task_manager.h"
 
-#define DEBUG_ONLY_1_MAPPER false
-#define DEBUG_ALL_THREADS false
-
 int main(int argc, const char** argv)
 {
     // Command line parameters
@@ -76,10 +73,6 @@ int main(int argc, const char** argv)
     // Create threads
     int total_threads = number_of_mappers + number_of_reducers;
 
-    #if DEBUG_ONLY_1_MAPPER
-        total_threads = 3;
-    #endif
-
     // Create mutex
     pthread_mutex_t mutexTaskList;
     if(pthread_mutex_init(&mutexTaskList, NULL) != 0) {
@@ -102,6 +95,7 @@ int main(int argc, const char** argv)
         myMapperTasks[i].mappers = &(mappers);
         myMapperTasks[i].mutexTaskList = mutexTaskList;
         myMapperTasks[i].barrier = barrier;
+        myMapperTasks[i].number_of_reducers = number_of_reducers;
         myMapperTasks[i].thread_id = i;
     }
 
@@ -157,24 +151,6 @@ int main(int argc, const char** argv)
         std::cerr << "Couldn;t close barrier correctly!";
         END_FUNCTION_ERROR
     }
-
-    #if DEBUG_ALL_THREADS
-        _sleep(1000);
-        std::cout << std::endl;
-        int mapper_id = 0;
-        for(auto mapper : mappers) {
-            std::cout << "mapper id: "<< mapper_id++ << std::endl;
-            int power = 2;
-            for(auto vector : mapper) {
-                std::cout << "List of power " << power++ << ": ";
-                for(auto elem : vector) {
-                    std::cout << elem << " ";
-                }
-                std::cout << std::endl;
-            }
-            std::cout << std::endl;
-        }
-    #endif
 
     END_FUNCTION_SUCCESS
 }

@@ -245,5 +245,3 @@ correctness=$((correct * 50 / total))
 make clean &> /dev/null
 
 show_score
-
-pause

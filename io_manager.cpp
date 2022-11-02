@@ -105,20 +105,8 @@ bool read_Input_File(int& nr_Of_Files, std::deque <std::string>& taskPQ, std::st
         END_FUNCTION_ERROR
     }
 
-    #if DEBUG_IO_MANAGER
-    std::cout << "Number of files that should be displayed: " << nr_Of_Files << std::endl; 
-    std::cout << "Number of files that will be displayed: " << taskPQ.size() << std::endl;    
-    for(auto item : taskPQ)
-        std::cout << "file: " << item << " with size: " << getFileSize(item) << std::endl;
-    #endif
-
     // Sort deque descending by size
     std::sort(taskPQ.begin(), taskPQ.end(), sort_by_file_size);
-    #if DEBUG_IO_MANAGER
-    std::cout << "Debugging files list..." << std::endl;
-    for(auto item : taskPQ)
-        std::cout << item << " " << getFileSize(item) << std::endl;
-    #endif
 
     // Close file
     inputFile.close();
