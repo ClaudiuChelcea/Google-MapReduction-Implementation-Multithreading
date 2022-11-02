@@ -2,7 +2,6 @@
 #include "task_manager.h"
 
 #define DEBUG_ONLY_1_MAPPER false
-#define REDUCERS_ACTIVE true
 #define DEBUG_ALL_THREADS false
 
 int main(int argc, const char** argv)
@@ -28,7 +27,8 @@ int main(int argc, const char** argv)
     }
 
     // All mappers
-    pthread_t mappers_threads[number_of_mappers];
+    std::vector<pthread_t> mappers_threads;
+    mappers_threads.resize(number_of_mappers * sizeof(pthread_t));
     std::vector<std::vector<std::vector<int>>> mappers;
     for(int i = 0; i < number_of_mappers; ++i) {
         // One mapper
@@ -64,7 +64,8 @@ int main(int argc, const char** argv)
     */
 
     // All reducers
-    pthread_t reducers_threads[number_of_reducers];
+    std::vector<pthread_t> reducers_threads;
+    reducers_threads.resize(number_of_reducers * sizeof(pthread_t));
     std::vector<std::vector<int>> reducers;
     for(int i = 0; i < number_of_reducers; ++i) {
         // One reducer
@@ -84,32 +85,34 @@ int main(int argc, const char** argv)
     if(pthread_mutex_init(&mutexTaskList, NULL) != 0) {
         std::cerr << "Couldn't open mutex!\n";
         END_FUNCTION_ERROR
-    };
+    }
 
     // Create barrier
     pthread_barrier_t barrier;
     if(pthread_barrier_init(&barrier, NULL, number_of_mappers) != 0) {
         std::cerr << "Couldn't open barrier!\n";
         END_FUNCTION_ERROR
-    };
+    }
 
     // Create task array mutex
-    struct MapperTaskList myMapperTasks[number_of_mappers];
+    std::vector<struct MapperTaskList> myMapperTasks;
+    myMapperTasks.resize(number_of_mappers * sizeof(struct MapperTaskList));
     for(int i = 0; i < number_of_mappers; ++i) {
         myMapperTasks[i].taskPQ = &(taskPQ);
         myMapperTasks[i].mappers = &(mappers);
         myMapperTasks[i].mutexTaskList = mutexTaskList;
+        myMapperTasks[i].barrier = barrier;
         myMapperTasks[i].thread_id = i;
-    };
+    }
 
     // Create task array barrier
-    struct BarrierTaskList myReducerTasks[number_of_reducers];
+    std::vector<struct BarrierTaskList> myReducerTasks;
+    myReducerTasks.resize(number_of_reducers * sizeof(struct BarrierTaskList));
     for(int i = 0; i < number_of_reducers; ++i) {
-        myReducerTasks[i].barrier = barrier;
         myReducerTasks[i].reducers = &(reducers);
         myReducerTasks[i].mappers = &(mappers);
         myReducerTasks[i].thread_id = i;
-    };
+    }
 
     // Create the threads to work on the tasks above
     for(int i = 0; i < total_threads; i++) {
@@ -119,15 +122,13 @@ int main(int argc, const char** argv)
                 std::cerr << "Error creating mapper thread!\n";
                 END_FUNCTION_ERROR
             }
-        }
-        #if REDUCERS_ACTIVE
-            else { // If all mappers created, create reducer thread
-                if(pthread_create(&reducers_threads[i-number_of_mappers], NULL, executeTaskReduce, (void*) &myReducerTasks[i]) != 0) {
-                    std::cerr << "Error creating reducer thread!\n";
-                    END_FUNCTION_ERROR
-                }
+        } else { // If all mappers created, create reducer thread
+            int reducer_creation_status = pthread_create(&reducers_threads[i - number_of_mappers], NULL, executeTaskReduce, (void*)&myReducerTasks[i - number_of_mappers]);
+            if(reducer_creation_status != 0) {
+                std::cerr << "Error creating reducer thread!\n";
+                END_FUNCTION_ERROR
             }
-        #endif
+        }
     }
 
     // Join threads
@@ -137,27 +138,25 @@ int main(int argc, const char** argv)
                 std::cerr << "Error closing mapper thread!\n";
                 END_FUNCTION_ERROR
             }
-        #if REDUCERS_ACTIVE
-            } else {
-                if(pthread_join(reducers_threads[i-number_of_mappers], NULL) != 0) {
-                    std::cerr << "Error closing mapper thread!\n";
-                    END_FUNCTION_ERROR
-                }
+        } else {
+            if(pthread_join(reducers_threads[i-number_of_mappers], NULL) != 0) {
+                std::cerr << "Error closing mapper thread!\n";
+                END_FUNCTION_ERROR
             }
-        #endif
+        }
     }
 
     // Destroy mutex
     if (pthread_mutex_destroy(&mutexTaskList) != 0) {
-        std::cerr << "Couldn;t close mutex correctly!";
+        std::cerr << "Couldn't close mutex correctly!";
         END_FUNCTION_ERROR
-    };
+    }
 
     // Destroy barrier
     if (pthread_barrier_destroy(&barrier) != 0) {
         std::cerr << "Couldn;t close barrier correctly!";
         END_FUNCTION_ERROR
-    };
+    }
 
     #if DEBUG_ALL_THREADS
         _sleep(1000);

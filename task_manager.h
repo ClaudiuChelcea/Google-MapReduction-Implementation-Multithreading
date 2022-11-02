@@ -8,6 +8,9 @@
 #include <deque>
 #include <math.h>
 #include <stdlib.h>
+#include <string>
+#define HAVE_STRUCT_TIMESPEC
+#include <pthread.h>
 
 #define DEBUG_TASK_MANAGER false
 #define DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME false
@@ -19,6 +22,7 @@ struct MapperTaskList
     std::deque <std::string>* taskPQ; // the vector of 'tasks' - files, in a priority queue
     std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
     pthread_mutex_t mutexTaskList; // the mutex used
+    pthread_barrier_t barrier; // the barrier
     int thread_id; // the vector of ids
 };
 
@@ -34,7 +38,6 @@ struct MapperTask
 // Used for sending multiple arguments to barrier threads
 struct BarrierTaskList
 {
-    pthread_barrier_t barrier; // the barrier
     std::vector<std::vector<int>>* reducers; // the reducers lists
     std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
     int thread_id; // the id of the thread

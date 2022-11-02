@@ -29,12 +29,10 @@ void* executeTaskMapper(void* _myTasks)
         pthread_mutex_lock(&(((struct MapperTaskList*) _myTasks)->mutexTaskList));
         if(((struct MapperTaskList*) _myTasks)->taskPQ->size() > 0) {
             found = true;
-            myTask = {
-                .file_name = ((struct MapperTaskList*) _myTasks)->taskPQ->front(),
-                .mapper_partial_list_array = &(((struct MapperTaskList*) _myTasks)->mappers->at((((struct MapperTaskList*) _myTasks)->thread_id))),
-                .mutexTaskList = (((struct MapperTaskList*) _myTasks)->mutexTaskList),
-                .thread_id = (((struct MapperTaskList*) _myTasks)->thread_id),
-            };
+            myTask.file_name = ((struct MapperTaskList*)_myTasks)->taskPQ->front();
+            myTask.mapper_partial_list_array = &(((struct MapperTaskList*)_myTasks)->mappers->at((((struct MapperTaskList*)_myTasks)->thread_id)));
+            myTask.mutexTaskList = (((struct MapperTaskList*)_myTasks)->mutexTaskList);
+            myTask.thread_id = (((struct MapperTaskList*)_myTasks)->thread_id);
             ((struct MapperTaskList*) _myTasks)->taskPQ->pop_front();
         } else {
             break; // No more files (tasks)
@@ -46,6 +44,9 @@ void* executeTaskMapper(void* _myTasks)
             solveTask(myTask);
         }
     }
+
+    // Wait all mappers to finish
+    pthread_barrier_wait(&((struct MapperTaskList*)_myTasks)->barrier);
 
     return NULL;
 }
@@ -128,7 +129,7 @@ static inline void solveTask(struct MapperTask& myTask)
     inputFile.close();
 
     // Unlock mutex
-   pthread_mutex_unlock(&myTask.mutexTaskList);
+    pthread_mutex_unlock(&myTask.mutexTaskList);
 }
 
 /**
@@ -151,20 +152,14 @@ void* executeTaskReduce(void* _myTasks)
         exit(-1);
     }
 
-    // Wait all mappers to finish
-    pthread_barrier_wait(&((BarrierTaskList*) _myTasks)->barrier);
-
     // Create task
-    struct BarrierTask myTask = {
-        .reducer_list = &((BarrierTaskList*) _myTasks)->reducers->at(((BarrierTaskList*) _myTasks)->thread_id),
-        .mappers = ((BarrierTaskList*) _myTasks)->mappers,
-        .thread_id = ((BarrierTaskList*) _myTasks)->thread_id,
-    };
+    struct BarrierTask myTask;
+    myTask.reducer_list = &((BarrierTaskList*)_myTasks)->reducers->at(((BarrierTaskList*)_myTasks)->thread_id);
+    myTask.mappers = ((BarrierTaskList*)_myTasks)->mappers;
+    myTask.thread_id = ((BarrierTaskList*)_myTasks)->thread_id;
 
-
-    std::cout << "Will solve " << myTask.thread_id << std::endl;
-
-    // Solve task in parallel
+    // Solve task
+    std::cout << "solved by " << myTask.thread_id << std::endl;
     solveReduce(myTask);
 
     return NULL;
@@ -177,36 +172,33 @@ void* executeTaskReduce(void* _myTasks)
  */
 static inline void solveReduce(struct BarrierTask& myTask)
 {
-    std::cout << "Will create reducer " << myTask.thread_id << std::endl;
-
     try
     {
         // Get reductor
         for(int i = 0; i < myTask.mappers->size(); ++i) { // for every mapper vector
-            std::cout << "HereI " << i << std::endl;
-            std::cout << "task id : " << myTask.thread_id << std::endl;
             int items_to_check = 0;
-            std::cout << "first item: " << myTask.mappers->at(i).at(0).at(0) << std::endl;
             try 
             {
-               items_to_check = myTask.mappers->at(i).at(myTask.thread_id).size();
+                // Check if we have items in that list and on that mapper
+                items_to_check = myTask.mappers->at(i).at(myTask.thread_id).size();
             } catch(std::exception e) {
                 std::cerr << e.what();
                 exit(-1);
             }
-            std::cout << "items_to_check: " << items_to_check << std::endl;
             for(int j = 0; j < items_to_check; ++j) { // all the items of the power equal to our reductor power order
-                std::cout << "HereJ " << j << std::endl;
                 myTask.reducer_list->push_back(myTask.mappers->at(i).at(myTask.thread_id).at(j));
             } 
         }
 
         // Get number of unique items in list
         std::sort(myTask.reducer_list->begin(), myTask.reducer_list->end());
+        for(int i = 0; i < myTask.reducer_list->size(); ++i) {
+            std::cout << "Thread: " << myTask.thread_id << " with item " << myTask.reducer_list->at(i) << std::endl;
+        }
         int uniqueCount = std::unique(myTask.reducer_list->begin(), myTask.reducer_list->end()) - myTask.reducer_list->begin();
 
         // Create the file and send the answer
-        std::string filename = "out" + myTask.thread_id;
+        std::string filename = "out" + std::to_string(myTask.thread_id + 2) + ".txt";
         std::ofstream f(filename, std::fstream::in | std::fstream::out | std::fstream::app);
         if(!f.is_open()) {
             std::cerr << "Reducer file couldn't be opened!";
@@ -219,6 +211,7 @@ static inline void solveReduce(struct BarrierTask& myTask)
         // Close file
         f.close();
     } catch (std::exception e) {
+        std::cerr << "Error is solving reducer task!" << std::endl;
         std::cerr << e.what();
         exit(-1);
     }
