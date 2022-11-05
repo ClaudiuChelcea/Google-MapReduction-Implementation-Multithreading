@@ -14,44 +14,40 @@
 #include <set>
 
 // Task vector - the vector of tasks that have to be completed by the threads
-struct MapperTaskList
-{
-    std::deque <std::string>* taskPQ; // the vector of 'tasks' - files, in a priority queue
-    std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
-    pthread_mutex_t mutexTaskList; // the mutex used
+struct MapperTaskList {
+    std::deque<std::string>* taskPQ; // the vector of 'tasks' - files, in a priority queue
+    std::vector<std::vector<std::vector<int> > >* mappers; // the mappers lists
+    pthread_mutex_t* mutexTaskList; // the mutex used
     int number_of_reducers; // the number of reducers
     int thread_id; // the vector of ids
-    std::pair<int,int>* mappers_status;
+    std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
 };
 
 // Used for sending multiple arguments to mapper threads
-struct MapperTask
-{
+struct MapperTask {
     std::string file_name; // the name of the file
-    std::vector<std::vector<int>>* mapper_partial_list_array; // the partial vector array
-    pthread_mutex_t mutexTaskList; // the mutex used
+    std::vector<std::vector<int> >* mapper_partial_list_array; // the partial vector array
+    pthread_mutex_t* mutexTaskList; // the mutex used
     int number_of_reducers; // the number of reducers
     int thread_id; // the id of the thread
 };
 
 // Used for sending multiple arguments to Reducer threads
-struct ReducerTaskList
-{
-    std::vector<std::vector<int>>* reducers; // the reducers lists
-    std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
+struct ReducerTaskList {
+    std::vector<std::vector<int> >* reducers; // the reducers lists
+    std::vector<std::vector<std::vector<int> > >* mappers; // the mappers lists
     int thread_id; // the id of the thread
-    pthread_barrier_t barrier; // second barrier for creating files
-    std::pair<int,int>* mappers_status;
+    pthread_barrier_t* barrier; // second barrier for creating files
+    std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
 };
 
 // Used for sending multiple arguments to Reducer threads
-struct ReducerTask
-{
+struct ReducerTask {
     std::vector<int>* reducer_list; // the reducers lists
-    std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
+    std::vector<std::vector<std::vector<int> > >* mappers; // the mappers lists
     int thread_id; // the id of the thread
-    pthread_barrier_t barrier; // second barrier for creating files
-    std::pair<int,int>* mappers_status;
+    pthread_barrier_t* barrier; // second barrier for creating files
+    std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
 };
 
 /**
@@ -67,6 +63,5 @@ void* executeTaskMapper(void* _myTasks);
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
 void* executeTaskReduce(void* _myTasks);
-
 
 #endif // __TASK_MANAGER_H

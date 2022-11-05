@@ -19,8 +19,7 @@
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
 bool read_CMDLINE_Params(int& number_of_mappers, int& number_of_reducers, std::string& input_file,
-                         const char** argv);
-
+    const char** argv);
 
 /**
  * Open input file and scan the number of files; Also add the all the files in a deque and sort it by file sizes
@@ -29,7 +28,6 @@ bool read_CMDLINE_Params(int& number_of_mappers, int& number_of_reducers, std::s
  * @param input_file - from this file we will read the data
  * @returns {bool} - returns true if the values were read correctly and false if not
  */
-bool read_Input_File(int& nr_Of_Files, std::deque <std::string>& taskPQ, std::string& input_file);
-
+bool read_Input_File(int& nr_Of_Files, std::deque<std::string>& taskPQ, std::string& input_file);
 
 #endif // __IO_MANAGER_H
