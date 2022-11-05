@@ -21,6 +21,7 @@ struct MapperTaskList
     pthread_mutex_t mutexTaskList; // the mutex used
     int number_of_reducers; // the number of reducers
     int thread_id; // the vector of ids
+    std::pair<int,int>* mappers_status;
 };
 
 // Used for sending multiple arguments to mapper threads
@@ -40,6 +41,7 @@ struct ReducerTaskList
     std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
     int thread_id; // the id of the thread
     pthread_barrier_t barrier; // second barrier for creating files
+    std::pair<int,int>* mappers_status;
 };
 
 // Used for sending multiple arguments to Reducer threads
@@ -49,6 +51,7 @@ struct ReducerTask
     std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
     int thread_id; // the id of the thread
     pthread_barrier_t barrier; // second barrier for creating files
+    std::pair<int,int>* mappers_status;
 };
 
 /**

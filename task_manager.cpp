@@ -48,7 +48,7 @@ void* executeTaskMapper(void* _myTasks)
         }
     }
 
-    
+    ((struct MapperTaskList*) _myTasks)->mappers_status->second++;
 
     return NULL;
 }
@@ -182,10 +182,6 @@ static inline void solveReduce(struct ReducerTask& myTask);
  */
 void* executeTaskReduce(void* _myTasks)
 {
-    // Wait all mappers to finish
-    
-    
-
     // Get arguments
     if(_myTasks == NULL) {
         std::cerr << "Arguments not sent correctly to reducer!";
@@ -197,7 +193,9 @@ void* executeTaskReduce(void* _myTasks)
     myTask.reducer_list = &((ReducerTaskList*)_myTasks)->reducers->at(((ReducerTaskList*)_myTasks)->thread_id);
     myTask.mappers = ((ReducerTaskList*)_myTasks)->mappers;
     myTask.thread_id = ((ReducerTaskList*)_myTasks)->thread_id;
+    myTask.mappers_status = ((ReducerTaskList*)_myTasks)->mappers_status;
 
+    while(myTask.mappers_status->second != ((ReducerTaskList*)_myTasks)->mappers->size()) {}
     pthread_barrier_wait(&((struct ReducerTaskList*)_myTasks)->barrier);
     solveReduce(myTask);
 
@@ -211,22 +209,21 @@ void* executeTaskReduce(void* _myTasks)
  */
 static inline void solveReduce(struct ReducerTask& myTask)
 {
-    std::cout << "\n\n--------------------WHAT REDUCER " << myTask.thread_id << " SEES --------------------\n\n";
-    int i = 0;
-    int mapper_id = 0;
-    for(auto mapper : *(myTask.mappers)) {
-        std::cout << "mapper id: "<< mapper_id++ << std::endl;
-        int power = 2;
-        for(auto vector : mapper) {
-            std::cout << "List of power " << power++ << ": ";
-            for(auto elem : vector) {
-                std::cout << elem << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
-   }
-
+//     std::cout << "\n\n--------------------WHAT REDUCER " << myTask.thread_id << " SEES --------------------\n\n";
+//     int i = 0;
+//     int mapper_id = 0;
+//     for(auto mapper : *(myTask.mappers)) {
+//         std::cout << "mapper id: "<< mapper_id++ << std::endl;
+//         int power = 2;
+//         for(auto vector : mapper) {
+//             std::cout << "List of power " << power++ << ": ";
+//             for(auto elem : vector) {
+//                 std::cout << elem << " ";
+//             }
+//             std::cout << std::endl;
+//         }
+//         std::cout << std::endl;
+//    }
 
     try
     {

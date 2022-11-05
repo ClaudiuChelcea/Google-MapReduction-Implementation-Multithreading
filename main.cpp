@@ -65,6 +65,7 @@ int main(int argc, const char** argv)
         std::cerr << "Couldn't open barrier!\n";
         END_FUNCTION_ERROR
     }
+    std::pair<int, int> mappers_status = std::make_pair(number_of_mappers, 0);
 
     // Create task array mutex
     std::vector<struct MapperTaskList> myMapperTasks;
@@ -77,7 +78,9 @@ int main(int argc, const char** argv)
         myMapperTasks[i].mutexTaskList = mutexTaskList;
         myMapperTasks[i].number_of_reducers = number_of_reducers;
         myMapperTasks[i].thread_id = i;
+        myMapperTasks[i].mappers_status = &mappers_status;
     }
+
 
     // Create task array Reducer
     std::vector<struct ReducerTaskList> myReducerTasks;
@@ -87,6 +90,7 @@ int main(int argc, const char** argv)
         myReducerTasks[i].mappers = &(mappers);
         myReducerTasks[i].thread_id = i;
         myReducerTasks[i].barrier = barrier;
+        myReducerTasks[i].mappers_status = &mappers_status;
     }
 
     // Create the threads to work on the tasks above
@@ -143,52 +147,50 @@ int main(int argc, const char** argv)
     }
 
 
-    std::cout << "\n\n\n-------------------RESULT IN MAIN-------------------\n\n\n";
-    int i = 0;
-    int mapper_id = 0;
-    for(auto mapper : mappers) {
-        std::cout << "mapper id: "<< mapper_id++ << std::endl;
-        int power = 2;
-        for(auto vector : mapper) {
-            std::cout << "List of power " << power++ << ": ";
-            for(auto elem : vector) {
-                std::cout << elem << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
-    }
+    // std::cout << "\n\n\n-------------------RESULT IN MAIN-------------------\n\n\n";
+    // int i = 0;
+    // int mapper_id = 0;
+    // for(auto mapper : mappers) {
+    //     std::cout << "mapper id: "<< mapper_id++ << std::endl;
+    //     int power = 2;
+    //     for(auto vector : mapper) {
+    //         std::cout << "List of power " << power++ << ": ";
+    //         for(auto elem : vector) {
+    //             std::cout << elem << " ";
+    //         }
+    //         std::cout << std::endl;
+    //     }
+    //     std::cout << std::endl;
+    // }
 
-    // Display all reducers
-    // std::cout << "``````````````````REDUCERS```````````````\n\n";
-    i = 0;
-    int count_unique = 0;
-    int my_element = -1;
-    std::vector<int> uniques;
-    for(auto list_of_unique_items : reducers) {
-        std::cout << "Reducer list: " << i++ << std::endl;
-        std::sort(list_of_unique_items.begin(),list_of_unique_items.end());
-        count_unique = 0;
-        my_element = -1;
-        for(auto element  : list_of_unique_items) {
-            std::cout << element << " ";
-            if (my_element == element) {
-                continue;
-            }
-            else {
-                count_unique++;
-                my_element = element;
-            }
-        }
-        uniques.push_back(count_unique);
-        std::cout<<"\n\n";
-    }
+    // // Display all reducers
+    // // std::cout << "``````````````````REDUCERS```````````````\n\n";
+    // i = 0;
+    // int count_unique = 0;
+    // int my_element = -1;
+    // std::vector<int> uniques;
+    // for(auto list_of_unique_items : reducers) {
+    //     std::cout << "Reducer list: " << i++ << std::endl;
+    //     std::sort(list_of_unique_items.begin(),list_of_unique_items.end());
+    //     count_unique = 0;
+    //     my_element = -1;
+    //     for(auto element  : list_of_unique_items) {
+    //         std::cout << element << " ";
+    //         if (my_element == element) {
+    //             continue;
+    //         }
+    //         else {
+    //             count_unique++;
+    //             my_element = element;
+    //         }
+    //     }
+    //     uniques.push_back(count_unique);
+    //     std::cout<<"\n\n";
+    // }
 
-    for (auto el : uniques) {
-        std::cout << el << std::endl;
-    }
-
-   
+    // for (auto el : uniques) {
+    //     std::cout << el << std::endl;
+    // }
 
     END_FUNCTION_SUCCESS
 }
