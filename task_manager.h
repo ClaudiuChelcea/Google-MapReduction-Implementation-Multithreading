@@ -20,6 +20,7 @@ struct MapperTaskList {
     pthread_mutex_t* mutexTaskList; // the mutex used
     int number_of_reducers; // the number of reducers
     int thread_id; // the vector of ids
+    pthread_barrier_t* barrier; // second barrier for creating files
     std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
 };
 

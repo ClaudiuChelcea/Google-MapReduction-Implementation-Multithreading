@@ -14,6 +14,8 @@ static inline void solveTask(struct MapperTask& myTask);
  */
 void* executeTaskMapper(void* _myTasks)
 {
+    struct MapperTask myTask;
+
     // Receive arguments
     if (!_myTasks) {
         std::cerr << "Tasks received by mapper thread send an error!\n";
@@ -23,7 +25,6 @@ void* executeTaskMapper(void* _myTasks)
     // Thread pull algorithm
     while (((struct MapperTaskList*)_myTasks)->taskPQ->size() > 0) {
         bool found = false; // check if we have found a file to work with
-        struct MapperTask myTask;
 
         // Create task
         pthread_mutex_lock(((struct MapperTaskList*)_myTasks)->mutexTaskList);
@@ -53,14 +54,12 @@ void* executeTaskMapper(void* _myTasks)
 
         // If we found a task (file), execute the task
         if (found) {
-            std::cout << "Solving " << myTask.file_name << " with thread " << myTask.thread_id << std::endl;
             solveTask(myTask);
         }
     }
 
-    // Mark mapper as finished
-    ((struct MapperTaskList*)_myTasks)->mappers_status->second++;
-
+    // Wait for all mappers to end
+    pthread_barrier_wait((((struct MapperTaskList*)_myTasks)->barrier));
     return NULL;
 }
 
@@ -185,11 +184,10 @@ void* executeTaskReduce(void* _myTasks)
     myTask.mappers = ((ReducerTaskList*)_myTasks)->mappers;
     myTask.thread_id = ((ReducerTaskList*)_myTasks)->thread_id;
     myTask.mappers_status = ((ReducerTaskList*)_myTasks)->mappers_status;
-    myTask.barrier =  ((struct ReducerTaskList*)_myTasks)->barrier;
+    myTask.barrier =  ((ReducerTaskList*)_myTasks)->barrier;
 
-    // Wait for mappers to be done
-    while (myTask.mappers_status->second != ((ReducerTaskList*)_myTasks)->mappers->size()) {}
-    pthread_barrier_wait(((struct ReducerTaskList*)_myTasks)->barrier);
+    // Wait for mappers to be done before solving the reduction
+    pthread_barrier_wait(myTask.barrier);
     solveReduce(myTask);
 
     return NULL;

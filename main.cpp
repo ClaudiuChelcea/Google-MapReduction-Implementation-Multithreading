@@ -64,8 +64,10 @@ int main(int argc, const char** argv)
     }
 
     // Create barrier
-    pthread_barrier_t barrier;
-    if (pthread_barrier_init(&barrier, NULL, number_of_reducers) != 0) {
+    pthread_barrier_t* const barrier = (pthread_barrier_t*) calloc
+                                        (1, sizeof(pthread_barrier_t));
+    if (pthread_barrier_init(barrier, NULL, number_of_reducers +
+                                            number_of_mappers) != 0) {
         std::cerr << "Couldn't open barrier!\n";
         END_FUNCTION_ERROR
     }
@@ -81,6 +83,7 @@ int main(int argc, const char** argv)
         myMapperTasks[i].mutexTaskList = &mutexTaskList;
         myMapperTasks[i].number_of_reducers = number_of_reducers;
         myMapperTasks[i].thread_id = i;
+        myMapperTasks[i].barrier = barrier;
         myMapperTasks[i].mappers_status = &mappers_status;
     }
 
@@ -91,7 +94,7 @@ int main(int argc, const char** argv)
         myReducerTasks[i].reducers = &(reducers);
         myReducerTasks[i].mappers = &(mappers);
         myReducerTasks[i].thread_id = i;
-        myReducerTasks[i].barrier = &barrier;
+        myReducerTasks[i].barrier = barrier;
         myReducerTasks[i].mappers_status = &mappers_status;
     }
 
@@ -108,8 +111,9 @@ int main(int argc, const char** argv)
         }
         else { // If all mappers created, create reducer thread
             int reducer_creation_status = pthread_create(
-                &reducers_threads[i - number_of_mappers], NULL, executeTaskReduce,
-                (void*)&myReducerTasks[i - number_of_mappers]);
+                &reducers_threads[i - number_of_mappers], NULL,
+                executeTaskReduce, (void*)&myReducerTasks[i - 
+                                            number_of_mappers]);
             if (reducer_creation_status != 0) {
                 std::cerr << "Error creating reducer thread!\n";
                 END_FUNCTION_ERROR
@@ -126,7 +130,8 @@ int main(int argc, const char** argv)
             }
         }
         else {
-            if (pthread_join(reducers_threads[i - number_of_mappers], NULL) != 0) {
+            if (pthread_join(reducers_threads[i - number_of_mappers], NULL)
+                                                                     != 0) {
                 std::cerr << "Error closing mapper thread!\n";
                 END_FUNCTION_ERROR
             }
@@ -140,7 +145,7 @@ int main(int argc, const char** argv)
     }
 
     // Destroy barrier
-    if (pthread_barrier_destroy(&barrier) != 0) {
+    if (pthread_barrier_destroy(barrier) != 0) {
         std::cerr << "Couldn't close barrier correctly!";
         END_FUNCTION_ERROR
     }
