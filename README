@@ -1,2 +1,81 @@
-# Google-MapReduction-Implementation-Multithreading
-Implementation of the Map-Reduction algorithm with multithreading.
+# 332CA
+# claudiuchelcea01@gmail.com
+
+Google-MapReduction-Implementation-Multithreading
+The implementation was made on Windows using Pthreads.
+
+After running `make`, the program is run (for individual tests) as:
+./tema1.exe {number_of_mappers} {number_of_reducers} test{x}/test.txt.
+
+For a full test will all tests, run ./test.sh
+
+Flow:
+All the command line parameters mentioned above are received in a function
+that also checks if they are correct.
+
+They are then sent to another function that creates a list (deque) of all the
+files that will need to be worked with, list sorted descending by size.
+
+Then the mappers is created, a 3D matrix that holds all the
+mappers, looking like this:
+mappers vector
+        . mapper_partial_list_array[0]:
+            . vector of power 2
+            . vector of power 3
+            . ...
+            . vector of power n
+        . mapper_partial_list_array[1]
+            . vector of power 2
+            . vector of power 3
+            . ...
+            . vector of power n
+        .
+        .
+        .
+        . mapper_partial_list_array[number_of_mappers - 1]
+            . vector of power 2
+            . vector of power 3
+            . ...
+            . vector of power n
+It will hold the content for all the mappers
+
+Then we create the reducers, a 2D matrix and initialise
+the mutex and the barrier.
+
+We then create the structures that will be given parameters
+to the threads.
+
+We now create the threads in the exact same time and
+they will be joined at the exact same time, one thread
+for each mapper and for each reducer.
+
+In the end, we release the memory and destroy the barrier and the mutex.
+
+What do the threads do:
+  * the mapper threads: we create a thread pull mechanic, meaning
+  all threads will stay in an infine while loop and get a file (called 
+  a task) from the list of files that weren't processed yet and the loop
+  for all of them will break only when there are no more files in the list
+  
+  This "pulling" is done under a mutex, so we don't have a race condition
+  where two threads will take the same file in the same time. After pulling
+  the file in a "task" data structure, it will be solved in another function.
+
+  That function will read each number in the file. If it's a perfect power,
+  it will be added to the current mapper in the list that matches the exponent
+  and also all factors of that number that match the criteria will be added
+  (for example, for 59049, both 243 * 2 and 9 * 5 will be added and even more)
+
+  When all tasks all solved, all mapper threads break the while loop and remain
+  at a barrier that will be broken as soon as all the reducers have started,
+  signaling to them they can start
+  * the reducer threads: after all mappers finished, following the same
+  pattern, they will create a reducer task in a new reducer data structure
+  and it will be passed to a function that will solve the problem.
+
+  Solving the problem consists of getting all the items from the mappers that
+  correspond to this reducer (e.g. for reducer 0 - all items in all mapper
+  lists that correspond to exponent 2).
+
+  After that, we extract the number of unique values in this reducer
+  and place the result in an out{reducer_thread_index}.txt file.

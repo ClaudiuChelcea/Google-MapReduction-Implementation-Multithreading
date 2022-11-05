@@ -71,6 +71,13 @@ void* executeTaskMapper(void* _myTasks)
  */
 void perfect_power(int n, struct MapperTask& myTask, int exponent = 2)
 {
+    if(n == 1) {
+        for (int i = 0; i < myTask.number_of_reducers; ++i) {
+            myTask.mapper_partial_list_array->at(i).push_back(1);
+        }
+        return;
+    }
+
     // Binary search to see if it's a perfect number
     while (true) {
         if (pow(2, exponent) > n) {
@@ -144,14 +151,7 @@ static inline void solveTask(struct MapperTask& myTask)
     int value_Holder{ 0 };
     inputFile >> value_Holder;
     while (inputFile >> value_Holder) {
-        if (value_Holder == 1) {
-            for (int i = 0; i < myTask.number_of_reducers; ++i) {
-                myTask.mapper_partial_list_array->at(i).push_back(1);
-            }
-        }
-        else {
-            perfect_power(value_Holder, myTask);
-        }
+        perfect_power(value_Holder, myTask);
     }
 
     // Close file
@@ -183,7 +183,6 @@ void* executeTaskReduce(void* _myTasks)
     myTask.reducer_list = &((ReducerTaskList*)_myTasks)->reducers->at(((ReducerTaskList*)_myTasks)->thread_id);
     myTask.mappers = ((ReducerTaskList*)_myTasks)->mappers;
     myTask.thread_id = ((ReducerTaskList*)_myTasks)->thread_id;
-    myTask.mappers_status = ((ReducerTaskList*)_myTasks)->mappers_status;
     myTask.barrier =  ((ReducerTaskList*)_myTasks)->barrier;
 
     // Wait for mappers to be done before solving the reduction
@@ -194,6 +193,35 @@ void* executeTaskReduce(void* _myTasks)
 }
 
 /**
+ * Solve the actual reducer task by returning the number of unique items
+ * @param myTask - a structure containing data for the reducer threads
+ * @returns {int} - returns how many unique items are in this reducer of this thread id
+ */
+static inline int getReducersUniqueValuesFromMappers(struct ReducerTask& myTask)
+{
+    // Get reductor
+    for (int i = 0; i < myTask.mappers->size(); ++i) { // for every mapper vector
+        int items_to_check = 0;
+        try {
+            // Check if we have items in that list and on that mapper
+            items_to_check = myTask.mappers->at(i).at(myTask.thread_id).size();
+        }
+        catch (std::exception e) {
+            std::cerr << "Couldn't solve reducer\n";
+            std::cerr << e.what();
+            exit(-1);
+        }
+        for (int j = 0; j < items_to_check; ++j) { // all the items of the power equal to our reductor power order
+            myTask.reducer_list->push_back(myTask.mappers->at(i).at(myTask.thread_id).at(j));
+        }
+    }
+
+    // Get number of unique items in list
+    std::sort(myTask.reducer_list->begin(), myTask.reducer_list->end());
+    return std::unique(myTask.reducer_list->begin(), myTask.reducer_list->end()) - myTask.reducer_list->begin();
+}
+
+/**
  * Solve the actual reducer task
  * @param myTask - a structure containing data for the reducer threads
  * @returns {void} - just solves the task and puts the value in the reducer array of lists
@@ -201,26 +229,7 @@ void* executeTaskReduce(void* _myTasks)
 static inline void solveReduce(struct ReducerTask& myTask)
 {
     try {
-        // Get reductor
-        for (int i = 0; i < myTask.mappers->size(); ++i) { // for every mapper vector
-            int items_to_check = 0;
-            try {
-                // Check if we have items in that list and on that mapper
-                items_to_check = myTask.mappers->at(i).at(myTask.thread_id).size();
-            }
-            catch (std::exception e) {
-                std::cerr << "Couldn't solve reducer\n";
-                std::cerr << e.what();
-                exit(-1);
-            }
-            for (int j = 0; j < items_to_check; ++j) { // all the items of the power equal to our reductor power order
-                myTask.reducer_list->push_back(myTask.mappers->at(i).at(myTask.thread_id).at(j));
-            }
-        }
-
-        // Get number of unique items in list
-        std::sort(myTask.reducer_list->begin(), myTask.reducer_list->end());
-        int uniqueCount = std::unique(myTask.reducer_list->begin(), myTask.reducer_list->end()) - myTask.reducer_list->begin();
+        int get_result = getReducersUniqueValuesFromMappers(myTask);
 
         // Create the file and send the answer
         std::string filename = "out" + std::to_string(myTask.thread_id + 2) + ".txt";
@@ -231,7 +240,7 @@ static inline void solveReduce(struct ReducerTask& myTask)
         }
 
         // Display answer
-        f << uniqueCount;
+        f << get_result;
 
         // Close file
         f.close();

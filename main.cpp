@@ -26,13 +26,12 @@ int main(int argc, const char** argv)
     }
 
     // All mappers
-    std::pair<int, int> mappers_status = std::make_pair(number_of_mappers, 0);
     std::vector<pthread_t> mappers_threads;
     mappers_threads.resize(number_of_mappers * sizeof(pthread_t));
-    std::vector<std::vector<std::vector<int> > > mappers;
+    std::vector<std::vector<std::vector<int>>> mappers;
     for (int i = 0; i < number_of_mappers; ++i) {
         // One mapper
-        std::vector<std::vector<int> > mapper_partial_list_array;
+        std::vector<std::vector<int>> mapper_partial_list_array;
         for (int i = 0; i < number_of_reducers;
              ++i) { // a mapper partial vector has number_of_reducers lists
             std::vector<int> mapper_partial_list;
@@ -53,9 +52,6 @@ int main(int argc, const char** argv)
         reducers.push_back(reducer_partial_list_array);
     }
 
-    // Create threads
-    int total_threads = number_of_mappers + number_of_reducers;
-
     // Create mutex
     pthread_mutex_t mutexTaskList;
     if (pthread_mutex_init(&mutexTaskList, NULL) != 0) {
@@ -64,18 +60,16 @@ int main(int argc, const char** argv)
     }
 
     // Create barrier
+    int total_threads = number_of_mappers + number_of_reducers;
     pthread_barrier_t* const barrier = (pthread_barrier_t*) calloc
                                         (1, sizeof(pthread_barrier_t));
-    if (pthread_barrier_init(barrier, NULL, number_of_reducers +
-                                            number_of_mappers) != 0) {
+    if (pthread_barrier_init(barrier, NULL, total_threads) != 0) {
         std::cerr << "Couldn't open barrier!\n";
         END_FUNCTION_ERROR
     }
 
     // Create task array mutex
     std::vector<struct MapperTaskList> myMapperTasks;
-    pthread_mutex_t secondMutex;
-    pthread_mutex_init(&secondMutex, NULL);
     myMapperTasks.resize(number_of_mappers * sizeof(struct MapperTaskList));
     for (int i = 0; i < number_of_mappers; ++i) {
         myMapperTasks[i].taskPQ = &(taskPQ);
@@ -84,7 +78,6 @@ int main(int argc, const char** argv)
         myMapperTasks[i].number_of_reducers = number_of_reducers;
         myMapperTasks[i].thread_id = i;
         myMapperTasks[i].barrier = barrier;
-        myMapperTasks[i].mappers_status = &mappers_status;
     }
 
     // Create task array Reducer
@@ -95,7 +88,6 @@ int main(int argc, const char** argv)
         myReducerTasks[i].mappers = &(mappers);
         myReducerTasks[i].thread_id = i;
         myReducerTasks[i].barrier = barrier;
-        myReducerTasks[i].mappers_status = &mappers_status;
     }
 
     // Create the threads to work on the tasks above

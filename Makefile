@@ -5,7 +5,7 @@
 # ********************************************************
 # ******************** COMPILER SETUP ******************** 
 CC = g++
-CFLAGS = -Wall -Wextra -std=c++17
+CFLAGS = -Wall -Wextra -std=c++17 -Werror
 SRC = main.cpp io_manager.cpp task_manager.cpp
 HEADERS = io_manager.h task_manager.h
 OBJECTS = main.o io_manager.o task_manager.o

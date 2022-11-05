@@ -1,0 +1,28 @@
+# Bonus: genericity
+
+Due to the huge usage of the Standard Template Library, the whole code can
+be changed in mere seconds, changing the data type from int to a string
+or a double or whatever data type.
+
+For example:
+std::vector<std::vector<std::vector<int>>> mappers;
+std::vector<std::vector<std::vector<string>>> mappers;
+std::vector<std::vector<std::vector<double>>> mappers;
+
+Each mapper / reducer calls it's function with it's functionality.
+Changing the mapper for example for a new data type or performing
+a total different operation is just calling another function
+instead of "solveTask" and therefore getting a total different
+result.
+Or, let's say that we want to do the exact thing, but not with
+perfect powers, maybe prime numbers for example, then in function
+solveTask, is just about changing the function that actually
+gives the result for our problem with perfect powers, the function
+"perfect_power" to "prime_number" function or whatever.
+
+For the reducer it is the same, change "solveReduce" to give
+another answer / to do something different.
+
+Therefore, the code can by modified in seconds to work with totally different
+data types and to execute totally different actions on those data types
+by easily changing the function called / the data type of the items.

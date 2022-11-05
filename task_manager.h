@@ -21,13 +21,12 @@ struct MapperTaskList {
     int number_of_reducers; // the number of reducers
     int thread_id; // the vector of ids
     pthread_barrier_t* barrier; // second barrier for creating files
-    std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
 };
 
 // Used for sending multiple arguments to mapper threads
 struct MapperTask {
     std::string file_name; // the name of the file
-    std::vector<std::vector<int> >* mapper_partial_list_array; // the partial vector array
+    std::vector<std::vector<int>>* mapper_partial_list_array; // the partial vector array
     pthread_mutex_t* mutexTaskList; // the mutex used
     int number_of_reducers; // the number of reducers
     int thread_id; // the id of the thread
@@ -35,17 +34,16 @@ struct MapperTask {
 
 // Used for sending multiple arguments to Reducer threads
 struct ReducerTaskList {
-    std::vector<std::vector<int> >* reducers; // the reducers lists
+    std::vector<std::vector<int>>* reducers; // the reducers lists
     std::vector<std::vector<std::vector<int> > >* mappers; // the mappers lists
     int thread_id; // the id of the thread
     pthread_barrier_t* barrier; // second barrier for creating files
-    std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
 };
 
 // Used for sending multiple arguments to Reducer threads
 struct ReducerTask {
     std::vector<int>* reducer_list; // the reducers lists
-    std::vector<std::vector<std::vector<int> > >* mappers; // the mappers lists
+    std::vector<std::vector<std::vector<int>>>* mappers; // the mappers lists
     int thread_id; // the id of the thread
     pthread_barrier_t* barrier; // second barrier for creating files
     std::pair<int, int>* mappers_status; // used to check if mappers finished their tasks
