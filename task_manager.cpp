@@ -1,5 +1,7 @@
 #include "task_manager.h"
 
+static int w = 0;
+
 /**
  * Solve the actual mapper task
  * @param myTask - a structure containing data for the mapper threads
@@ -46,8 +48,7 @@ void* executeTaskMapper(void* _myTasks)
         }
     }
 
-    // Wait all mappers to finish
-    pthread_barrier_wait(&((struct MapperTaskList*)_myTasks)->barrier);
+    
 
     return NULL;
 }
@@ -58,18 +59,10 @@ void* executeTaskMapper(void* _myTasks)
  * @param myTask - receives the task so we can save the values in the reductors arrays
  * @returns {void} - nothing
  */
-void perfect_power(int n, struct MapperTask& myTask)
+void perfect_power(int n, struct MapperTask& myTask, int exponent = 2)
 {
-    // If n == 1, add to all lists
-    if (n == 1) {
-        for(int i = 0; i < myTask.number_of_reducers; ++i) {
-            myTask.mapper_partial_list_array->at(i).push_back(1);
-        }
-        return;
-    }
-
     // If not, binary search to see if it's a perfect number
-    int exponent = 2;
+    
     while(true) {
         if (pow(2, exponent) > n) {
             return;
@@ -93,14 +86,26 @@ void perfect_power(int n, struct MapperTask& myTask)
         // If it is a perfect number finally
         if(pow(low, exponent) == n) { // Put it in our lists
             // Max low with min exponent
-            if(exponent <= myTask.number_of_reducers + 1)
-                myTask.mapper_partial_list_array->at(exponent - 2).push_back(low); // -2 since 2nd power is mapped as 0
-            
-            // Also get all other lows and exponent combos
-            float sqrt_low;;
-            while((sqrt_low = sqrt(low)) == (int) sqrt_low && (exponent = exponent *2) <= (myTask.number_of_reducers + 1)) {
-                myTask.mapper_partial_list_array->at(exponent - 2).push_back(low);
+            if(exponent > myTask.number_of_reducers + 1)
+                return;
+
+            if(exponent <= myTask.number_of_reducers + 1) {
+                myTask.mapper_partial_list_array->at(exponent - 2).push_back(n); // -2 since 2nd power is mapped as 0
             }
+            
+           for(int i = 2; i * i <= low; ++i) {
+                if(low % i == 0) { 
+                    int power = 0;
+                    int tmp = low;
+                    while (tmp % i == 0) {
+                        ++power;
+                        tmp /= i;
+                    }
+                    if(power * exponent <= myTask.number_of_reducers + 1 && tmp <= 1) 
+                        myTask.mapper_partial_list_array->at(power * exponent - 2).push_back(n);
+                }
+            }
+            perfect_power(n, myTask, ++exponent);
             return;
         }
 
@@ -109,9 +114,6 @@ void perfect_power(int n, struct MapperTask& myTask)
     }
 }
 
-static int q = 0;
-
-
 /**
  * Solve the actual mapper task
  * @param myTask - a structure containing data for the mapper threads
@@ -119,6 +121,7 @@ static int q = 0;
  */
 static inline void solveTask(struct MapperTask& myTask)
 {
+   // std::cout << "Solving with thread " << myTask.thread_id << std::endl;
     #if DEBUG_ONLY_SHOW_THREADS_AND_SLOW_TIME
     _sleep(5);
     #endif
@@ -137,12 +140,28 @@ static inline void solveTask(struct MapperTask& myTask)
     int value_Holder {0};
     inputFile >> value_Holder;
     while(inputFile >> value_Holder) {
-        //   q++;
-        //  std::cout << "Value nr: " << q << " solving value " << value_Holder << " with thread " << myTask.thread_id << " in file: " << myTask.file_name << std::endl;
-        perfect_power(value_Holder, myTask);
+        if(value_Holder == 1) {
+            for(int i = 0; i < myTask.number_of_reducers; ++i) {
+                // std::cout << "Added 1 at pos i: " << i << std::endl;
+                myTask.mapper_partial_list_array->at(i).push_back(1);
+            }
+        } else {
+            perfect_power(value_Holder, myTask);
+        }
     }
 
     // Close file
+    // std::cout << "\n\nFrom file: " << myTask.file_name << " from thread " << myTask.thread_id << " status is: " << std::endl;
+    // int i = 0;
+    // for(auto list_of_unique_items : *(myTask.mapper_partial_list_array)) {
+    //     std::cout << "Mapper list: " << i++ << std::endl;
+    //     std::sort(list_of_unique_items.begin(),list_of_unique_items.end());
+    //     // list_of_unique_items.erase(std::unique(list_of_unique_items.begin(), list_of_unique_items.end() ), list_of_unique_items.end() );
+    //     for(auto element  : list_of_unique_items) {
+    //         std::cout << element << " ";
+    //     }
+    //     std::cout<<"\n\n";
+    // } 
     inputFile.close();
 
     // Unlock mutex
@@ -154,7 +173,7 @@ static inline void solveTask(struct MapperTask& myTask)
  * @param myTask - a structure containing data for the reducer threads
  * @returns {void} - just solves the task and puts the value in the reducer array of lists
  */
-static inline void solveReduce(struct BarrierTask& myTask);
+static inline void solveReduce(struct ReducerTask& myTask);
 
 /**
  * Execute the reducer
@@ -163,6 +182,10 @@ static inline void solveReduce(struct BarrierTask& myTask);
  */
 void* executeTaskReduce(void* _myTasks)
 {
+    // Wait all mappers to finish
+    
+    
+
     // Get arguments
     if(_myTasks == NULL) {
         std::cerr << "Arguments not sent correctly to reducer!";
@@ -170,12 +193,12 @@ void* executeTaskReduce(void* _myTasks)
     }
 
     // Create task
-    struct BarrierTask myTask;
-    myTask.reducer_list = &((BarrierTaskList*)_myTasks)->reducers->at(((BarrierTaskList*)_myTasks)->thread_id);
-    myTask.mappers = ((BarrierTaskList*)_myTasks)->mappers;
-    myTask.thread_id = ((BarrierTaskList*)_myTasks)->thread_id;
+    struct ReducerTask myTask;
+    myTask.reducer_list = &((ReducerTaskList*)_myTasks)->reducers->at(((ReducerTaskList*)_myTasks)->thread_id);
+    myTask.mappers = ((ReducerTaskList*)_myTasks)->mappers;
+    myTask.thread_id = ((ReducerTaskList*)_myTasks)->thread_id;
 
-    // Solve task
+    pthread_barrier_wait(&((struct ReducerTaskList*)_myTasks)->barrier);
     solveReduce(myTask);
 
     return NULL;
@@ -186,8 +209,25 @@ void* executeTaskReduce(void* _myTasks)
  * @param myTask - a structure containing data for the reducer threads
  * @returns {void} - just solves the task and puts the value in the reducer array of lists
  */
-static inline void solveReduce(struct BarrierTask& myTask)
+static inline void solveReduce(struct ReducerTask& myTask)
 {
+    std::cout << "\n\n--------------------WHAT REDUCER " << myTask.thread_id << " SEES --------------------\n\n";
+    int i = 0;
+    int mapper_id = 0;
+    for(auto mapper : *(myTask.mappers)) {
+        std::cout << "mapper id: "<< mapper_id++ << std::endl;
+        int power = 2;
+        for(auto vector : mapper) {
+            std::cout << "List of power " << power++ << ": ";
+            for(auto elem : vector) {
+                std::cout << elem << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+   }
+
+
     try
     {
         // Get reductor
@@ -207,9 +247,11 @@ static inline void solveReduce(struct BarrierTask& myTask)
         }
 
         // Get number of unique items in list
+        //std::cout << "Reducer list " << myTask.thread_id + 2 << std::endl;
+       // for(auto element : *(myTask.reducer_list)) {
+      //      std::cout << element << " " << std::endl;
+      //  }
         std::sort(myTask.reducer_list->begin(), myTask.reducer_list->end());
-        for(int i = 0; i < myTask.reducer_list->size(); ++i) {
-        }
         int uniqueCount = std::unique(myTask.reducer_list->begin(), myTask.reducer_list->end()) - myTask.reducer_list->begin();
 
         // Create the file and send the answer
@@ -222,6 +264,7 @@ static inline void solveReduce(struct BarrierTask& myTask)
 
         // Display answer
         f << uniqueCount;
+     //   std::cout << "Inserted " << uniqueCount << std::endl;
 
         // Close file
         f.close();
